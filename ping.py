@@ -30,6 +30,11 @@
     Revision history
     ~~~~~~~~~~~~~~~~
 
+    March 11, 2010
+    changes by Samuel Stauffer:
+    - replaced time.clock with default_timer which is set to
+      time.clock on windows and time.time on other systems.
+
     May 30, 2007
     little rewrite by Jens Diemer:
      -  change socket asterisk import to a normal import
@@ -62,6 +67,13 @@
 
 
 import os, sys, socket, struct, select, time
+
+if sys.platform == "win32":
+    # On Windows, the best timer is time.clock()
+    default_timer = time.clock
+else:
+    # On most other platforms the best timer is time.time()
+    default_timer = time.time
 
 # From /usr/include/linux/icmp.h; your milage may vary.
 ICMP_ECHO_REQUEST = 8 # Seems to be the same on Solaris.
@@ -102,13 +114,13 @@ def receive_one_ping(my_socket, ID, timeout):
     """
     timeLeft = timeout
     while True:
-        startedSelect = time.clock()
+        startedSelect = default_timer()
         whatReady = select.select([my_socket], [], [], timeLeft)
-        howLongInSelect = (time.clock() - startedSelect)
+        howLongInSelect = (default_timer() - startedSelect)
         if whatReady[0] == []: # Timeout
             return
 
-        timeReceived = time.clock()
+        timeReceived = default_timer()
         recPacket, addr = my_socket.recvfrom(1024)
         icmpHeader = recPacket[20:28]
         type, code, checksum, packetID, sequence = struct.unpack(
@@ -137,7 +149,7 @@ def send_one_ping(my_socket, dest_addr, ID):
     header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, my_checksum, ID, 1)
     bytesInDouble = struct.calcsize("d")
     data = (192 - bytesInDouble) * "Q"
-    data = struct.pack("d", time.clock()) + data
+    data = struct.pack("d", default_timer()) + data
 
     # Calculate the checksum on the data and the dummy header.
     my_checksum = checksum(header + data)
