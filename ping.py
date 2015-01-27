@@ -57,6 +57,9 @@
     Changed the struct.pack() calls to pack the checksum and ID as
     unsigned. My thanks to Jerome Poincheval for the fix.
 
+    Januari 27, 2015
+    Changed receive response to not accept ICMP request messages.
+    It was possible to receive the very request that was sent.
 
     Last commit info:
     ~~~~~~~~~~~~~~~~~
@@ -126,7 +129,10 @@ def receive_one_ping(my_socket, ID, timeout):
         type, code, checksum, packetID, sequence = struct.unpack(
             "bbHHh", icmpHeader
         )
-        if packetID == ID:
+        # Filters out the echo request itself. 
+        # This can be tested by pinging 127.0.0.1 
+        # You'll see your own request
+        if type != 8 and packetID == ID:
             bytesInDouble = struct.calcsize("d")
             timeSent = struct.unpack("d", recPacket[28:28 + bytesInDouble])[0]
             return timeReceived - timeSent
